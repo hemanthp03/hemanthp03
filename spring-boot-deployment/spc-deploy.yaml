@@ -2,18 +2,45 @@
 - name: Deploy spring pet clinic as Linux service
   hosts: appserver
   become: yes
+  vars:
+  java_package: openjdk-11-jdk
+  app_dir: /usr/share/springpetclinic
+  app_download_url: https://referenceapplicationskhaja.s3-us-west-2.amazonaws.com/spring-petclinic-2.4.2.jar
+  app_file_name: spring-petclinic-2.4.2.jar
+  app_username: springbootuser
   tasks:
     - name: Update ubuntu packages and install java
       apt:
-        name: openjdk-11-jdk
+        name: "{{ java_package }}"
         update_cache: yes
         state: present
     - name: Create a Spring pet clinic directory
       file:
-        path: /usr/share/springpetclinic
+        path: "{{ app_dir }}"
         state: Directory
     - name: Download spring pet clinic 
       get_url:
-        url: https://referenceapplicationskhaja.s3-us-west-2.amazonaws.com/spring-petclinic-2.4.2.jar
-        dest: /usr/share/springpetclinic/spring-petclinic-2.4.2.jar
+        url: "{{ app_download_url }}"
+        dest: "{{ app_dir }}/{{ app_file_name }}"
+    - name: Create springbootuser
+      user:
+        name: "{{ app_username }}"
+        password: "{{ app_username }}"
+        state: present
+    - name: Change ownership of jar file
+      file:
+        path: "{{ app_dir }}/{{ app_file_name }}"
+        owner: "{{ app_username }}"
+        mode: '500'
+        state: file
+    - name: Copy the spring petclinic service file
+      copy:
+        dest: /etc/systemd/system/springpetclinic.service
+        src: springpetclinic.service
+    - name: Enable and start spring petclinic
+      systemd:
+        name: springpetclinic.service
+        enabled: yes
+        state: started
+        
 
